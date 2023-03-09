@@ -1,4 +1,6 @@
 import os
+import pickle
+
 import cv2 as cv
 import numpy as np
 
@@ -109,9 +111,9 @@ def findCorners(sampleImage):
 
 def loadIntrinsics():
 
-    path = os.path.join("4persons", "extrinsics")
+    #path = os.path.join("4persons", "extrinsics")
     fileName = "camera_matrix.npz"
-    with np.load(os.path.join(path, fileName)) as file:
+    with np.load(fileName) as file:
         mtx, d = [file[j] for j in ['mtx', 'dist']]
 
     return mtx, d
@@ -161,3 +163,57 @@ def saveFrame():
             #frameName =
             #cv.imwrite(("frame" + str(i+1) + ".png"), frame)
             print("Done")
+
+def createLookupTable():
+    cameraLookupTable = {}
+    intrinsicMatrix, dist = loadIntrinsics()
+
+    # Define the range of the cube
+    Xl = -10
+    Xh = 23
+    Yl = -19
+    Yh = 14
+    Zl = 2
+    Zh = -16
+
+    for i in range(4):
+        voxelCoordinates = []
+
+        frameName = "frame" + str(i+1) + ".png"
+        frame = cv.imread(frameName)
+        output = "camera_extrinsics" + str(i+1) + ".npz"
+        with np.load(output) as file:
+            rotation, translation = [file[i] for i in ['rvec', 'tvec']]
+
+        for x in np.arange(Xl, Xh, 0.5):
+            for y in np.arange(Yl, Yh, 0.5):
+                for z in np.arange(Zh, Zl, 0.5):
+                    # Get the projected point of the voxel position.
+                    voxelPoint = np.float32((x, y, z)) * tileSize
+                    voxelCoordinate, jac = cv.projectPoints(voxelPoint, rotation, translation, intrinsicMatrix, dist)
+                    voxelCoordinates.append(voxelCoordinate)
+
+                    fx = int(voxelCoordinate[0][0][0])
+                    fy = int(voxelCoordinate[0][0][1])
+
+                    Xc = voxelPoint[0]
+                    Yc = voxelPoint[1]
+                    Zc = voxelPoint[2]
+                    # Store 2d points as key and array of voxels as value
+                    if (fy, fx) in cameraLookupTable:
+                        cameraLookupTable[(fy, fx)].append((Xc, Yc, Zc, i))
+                    else:
+                        cameraLookupTable[(fy, fx)] = [(Xc, Yc, Zc, i)]
+
+        #Draw the voxels for confirmation.
+        for voxel in voxelCoordinates:
+            x = int(voxel[0][0][0])
+            y = int(voxel[0][0][1])
+            #b, g, r = color[i][(x, y)]
+
+            img = cv.circle(frame, (int(voxel[0][0][0]), int(voxel[0][0][1])), 1, (255, 0, 0), 2)
+        cv.imshow('img', img)
+        cv.waitKey(500)
+    #
+    # with open('xorLookupTable.pickle', 'wb') as handle:
+    #     pickle.dump(cameraLookupTable, handle, protocol=pickle.HIGHEST_PROTOCOL)
