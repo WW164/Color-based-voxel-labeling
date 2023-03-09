@@ -62,7 +62,9 @@ def backgroundSubtraction(frame, cameraIndex):
     hsvFrame = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
     dFrame = cv.absdiff(hsvFrame, backgroundModels[cameraIndex])
     dFrame = cv.cvtColor(dFrame, cv.COLOR_BGR2GRAY)
-
+    #print("here")
+    #cv.imshow("dFrame", dFrame)
+    #cv.waitKey(0)
     img = RefineOutput(dFrame)
     return img
 
@@ -74,21 +76,25 @@ def RefineOutput(image):
         print('Could not open or find the image: ', image)
         exit(0)
 
-    Apply_Threshold(0)
-    contours = 1000000
-    while contours != 1:
-        contours = Apply_Contours(0)
-    dilatation(3)
-    return src
+    Apply_Threshold(30)
+    # contours = 1000000
+    # while contours != 4:
+    #      contours = Apply_Contours(0)
+    # # dilatation(3)
+    # return src
+    #contours = 1000000
+    #while contours != 4:
+    #contours = Apply_Contours(0)
 
-    '''
-    legacy code
+    # legacy code
     cv.namedWindow(title_refine_window)
+    cv.createTrackbar(Contour_trackbar, title_refine_window, 0, 100, Apply_Contours)
+    #cv.createTrackbar(Threshold_trackbar, title_refine_window, 0, 100, Apply_Threshold)
     cv.createTrackbar(erode_trackbar_element_shape, title_refine_window, 0, max_elem, erosion)
     cv.createTrackbar(erode_trackbar_kernel_size, title_refine_window, 0, max_kernel_size, erosion)
     cv.createTrackbar(dilate_trackbar_element_shape, title_refine_window, 0, max_elem, dilatation)
     cv.createTrackbar(dilate_trackbar_kernel_size, title_refine_window, 0, max_kernel_size, dilatation)
-    erosion(0)
+
     while True:
         k = cv.waitKey(0)
         if k == ord('e'):  # e key to save
@@ -99,19 +105,25 @@ def RefineOutput(image):
             Results.append(src)
             print("committed")
             break
+        elif k == ord('x'):  # q key to commit the image to the list
+            print("bad image")
+            break
         else:  # normally -1 returned,so don't print it
             break
     print('returning src')
-    '''
+    cv.destroyAllWindows()
+    return src
 
 
 def Apply_Threshold(val):
     global src, temp
     # Threshold to binarize
-    th, dFrame = cv.threshold(src, 30, 255, cv.THRESH_BINARY)
+    img = src.copy()
+    #threshold_value = cv.getTrackbarPos(Threshold_trackbar, title_refine_window)
+    th, dFrame = cv.threshold(img, val, 255, cv.THRESH_BINARY)
     src = dFrame
-    # temp = dFrame
-    # cv.imshow(title_refine_window, src)
+    #temp = dFrame
+    cv.imshow(title_refine_window, src)
 
 
 def Apply_Contours(val):
@@ -121,17 +133,18 @@ def Apply_Contours(val):
 
     img = src.copy()
     sorted_contours = sorted(contours, key=cv.contourArea, reverse=True)
-    largest_item = sorted_contours[0]
+    #largest_item = sorted_contours[0]
 
     mask = np.ones(img.shape[:2], dtype="uint8") * 255
     # print(len(sorted_contours))
     for i in range(len(sorted_contours)):
-        if i != 0:
+        if i > 3:
             cv.drawContours(mask, sorted_contours[i], -1, 0, -1)
     # remove the contours from the image and show the resulting images
     image = cv.bitwise_and(img, img, mask=mask)
-    # cv.imshow(title_refine_window, image)
-    src = image
+    cv.imshow(title_refine_window, image)
+    temp = image
+    print(len(sorted_contours))
     return len(sorted_contours)
 
 
@@ -158,34 +171,51 @@ def erosion(val):
 
 def dilatation(val):
     global src, temp
-    # dilatation_size = cv.getTrackbarPos(dilate_trackbar_kernel_size, title_refine_window)
-    dilatation_size = val
-    #dilation_shape = morph_shape(cv.getTrackbarPos(dilate_trackbar_element_shape, title_refine_window))
-    element = cv.getStructuringElement(0, (2 * dilatation_size + 1, 2 * dilatation_size + 1),
+    dilatation_size = cv.getTrackbarPos(dilate_trackbar_kernel_size, title_refine_window)
+    print(dilatation_size)
+    #dilatation_size = val
+    dilation_shape = morph_shape(cv.getTrackbarPos(dilate_trackbar_element_shape, title_refine_window))
+    element = cv.getStructuringElement(dilation_shape, (2 * dilatation_size + 1, 2 * dilatation_size + 1),
                                        (dilatation_size, dilatation_size))
     dilate_dst = cv.dilate(src, element)
-    # cv.imshow(title_refine_window, dilate_dst)
-    src = dilate_dst
+    cv.imshow(title_refine_window, dilate_dst)
+    temp = dilate_dst
 
 
 def GenerateForeground():
     #print(backgroundModels)
+    foregroundImages = []
     for i in range(4):
-        foregroundImages = []
-
+        filepath = os.path.join("4persons", "video")
         videoName = "video" + str(i + 1) + ".avi"
         videoPath = os.path.join(filepath, videoName)
         video = cv.VideoCapture(videoPath)
-        video.set(cv.CAP_PROP_POS_FRAMES, 1)
-        ret, frame = video.read()
-        result = backgroundSubtraction(frame, i)
-        cv.imshow("result", result)
-        cv.waitKey(0)
+        frameIndex = 0
+        keeplooping = True
+        while keeplooping:
+            print(frameIndex)
+            video.set(cv.CAP_PROP_POS_FRAMES, frameIndex)
+            ret, frame = video.read()
+            cv.imshow("frame", frame)
+            k = cv.waitKey(0)
+            if k == ord('e'):  # e key to save
+                print("good image")
+                result = backgroundSubtraction(frame, i)
+                keeplooping = False
+            elif k == ord('x'):  # q key to commit the image to the list
+                print("bad image")
+                frameIndex += 10
+
+        #cv.imshow("result", result)
+        #cv.waitKey(0)
         # cv.DestroyAllWindows()
         foregroundImages.append(result)
         output = "foreground" + str(i + 1) + ".png"
         # cv.imshow('foreground image', np.float32(foregroundImages))
         # cv.waitKey(500)
-        cv.imwrite(output, foregroundImages)
+        print("length = ", len(foregroundImages))
+        print("i  = ", i)
+
+        cv.imwrite(output, foregroundImages[i])
 
     return foregroundImages
