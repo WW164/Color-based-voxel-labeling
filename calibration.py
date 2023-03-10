@@ -176,44 +176,87 @@ def createLookupTable():
     Zl = 2
     Zh = -16
 
-    for i in range(4):
-        voxelCoordinates = []
+    voxelCoordinates = []
 
-        frameName = "frame" + str(i+1) + ".png"
-        frame = cv.imread(frameName)
-        output = "camera_extrinsics" + str(i+1) + ".npz"
-        with np.load(output) as file:
-            rotation, translation = [file[i] for i in ['rvec', 'tvec']]
+    #frameName = "frame" + str(i + 1) + ".png"
+    frame = cv.imread("frame1.png")
+    #output = "camera_extrinsics" + str(i + 1) + ".npz"
+    with np.load("camera_extrinsics1.npz") as file:
+        rotation, translation = [file[i] for i in ['rvec', 'tvec']]
 
-        for x in np.arange(Xl, Xh, 0.5):
-            for y in np.arange(Yl, Yh, 0.5):
-                for z in np.arange(Zh, Zl, 0.5):
-                    # Get the projected point of the voxel position.
-                    voxelPoint = np.float32((x, y, z)) * tileSize
-                    voxelCoordinate, jac = cv.projectPoints(voxelPoint, rotation, translation, intrinsicMatrix, dist)
-                    voxelCoordinates.append(voxelCoordinate)
+    for x in np.arange(Xl, Xh, 0.5):
+        for y in np.arange(Yl, Yh, 0.5):
+            for z in np.arange(Zh, Zl, 0.5):
+                output = []
+                # Get the projected point of the voxel position.
+                voxelPoint = np.float32((x, y, z)) * tileSize
+                voxelCoordinate, jac = cv.projectPoints(voxelPoint, rotation, translation, intrinsicMatrix, dist)
+                voxelCoordinates.append(voxelCoordinate)
 
-                    fx = int(voxelCoordinate[0][0][0])
-                    fy = int(voxelCoordinate[0][0][1])
+                fx = int(voxelCoordinate[0][0][0])
+                fy = int(voxelCoordinate[0][0][1])
 
-                    Xc = voxelPoint[0]
-                    Yc = voxelPoint[1]
-                    Zc = voxelPoint[2]
-                    # Store 2d points as key and array of voxels as value
-                    if (fy, fx) in cameraLookupTable:
-                        cameraLookupTable[(fy, fx)].append((Xc, Yc, Zc, i))
-                    else:
-                        cameraLookupTable[(fy, fx)] = [(Xc, Yc, Zc, i)]
+                Xc = voxelPoint[0]
+                Yc = voxelPoint[1]
+                Zc = voxelPoint[2]
 
-        #Draw the voxels for confirmation.
-        for voxel in voxelCoordinates:
-            x = int(voxel[0][0][0])
-            y = int(voxel[0][0][1])
-            #b, g, r = color[i][(x, y)]
+                output.append((fy, fx))
 
-            img = cv.circle(frame, (int(voxel[0][0][0]), int(voxel[0][0][1])), 1, (255, 0, 0), 2)
-        cv.imshow('img', img)
-        cv.waitKey(500)
+                # Store 2d points as key and array of voxels as value
+                if (Xc, Yc, Zc) in cameraLookupTable:
+                    cameraLookupTable[(Xc, Yc, Zc)].append((fy, fx))
+                else:
+                    cameraLookupTable[(Xc, Yc, Zc)] = output
+
+    # Draw the voxels for confirmation.
+    # for voxel in voxelCoordinates:
+    #     x = int(voxel[0][0][0])
+    #     y = int(voxel[0][0][1])
+    #     # b, g, r = color[i][(x, y)]
     #
-    # with open('xorLookupTable.pickle', 'wb') as handle:
-    #     pickle.dump(cameraLookupTable, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    #     img = cv.circle(frame, (int(voxel[0][0][0]), int(voxel[0][0][1])), 1, (255, 0, 0), 2)
+    # cv.imshow('img', img)
+    # cv.waitKey(500)
+
+    # for i in range(4):
+    #     voxelCoordinates = []
+    #
+    #     frameName = "frame" + str(i+1) + ".png"
+    #     frame = cv.imread(frameName)
+    #     output = "camera_extrinsics" + str(i+1) + ".npz"
+    #     with np.load(output) as file:
+    #         rotation, translation = [file[i] for i in ['rvec', 'tvec']]
+    #
+    #     for x in np.arange(Xl, Xh, 0.5):
+    #         for y in np.arange(Yl, Yh, 0.5):
+    #             for z in np.arange(Zh, Zl, 0.5):
+    #                 # Get the projected point of the voxel position.
+    #                 voxelPoint = np.float32((x, y, z)) * tileSize
+    #                 voxelCoordinate, jac = cv.projectPoints(voxelPoint, rotation, translation, intrinsicMatrix, dist)
+    #                 voxelCoordinates.append(voxelCoordinate)
+    #
+    #                 fx = int(voxelCoordinate[0][0][0])
+    #                 fy = int(voxelCoordinate[0][0][1])
+    #
+    #                 Xc = voxelPoint[0]
+    #                 Yc = voxelPoint[1]
+    #                 Zc = voxelPoint[2]
+    #                 # Store 2d points as key and array of voxels as value
+    #                 if (fy, fx) in cameraLookupTable:
+    #                     cameraLookupTable[(fy, fx)].append((Xc, Yc, Zc, i))
+    #                 else:
+    #                     cameraLookupTable[(fy, fx)] = [(Xc, Yc, Zc, i)]
+    #
+    #     #Draw the voxels for confirmation.
+    #     for voxel in voxelCoordinates:
+    #         x = int(voxel[0][0][0])
+    #         y = int(voxel[0][0][1])
+    #         #b, g, r = color[i][(x, y)]
+    #
+    #         img = cv.circle(frame, (int(voxel[0][0][0]), int(voxel[0][0][1])), 1, (255, 0, 0), 2)
+    #     cv.imshow('img', img)
+    #     cv.waitKey(500)
+    # #
+    with open('lookupTable.pickle', 'wb') as handle:
+        pickle.dump(cameraLookupTable, handle, protocol=pickle.HIGHEST_PROTOCOL)
+

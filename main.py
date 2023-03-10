@@ -6,5 +6,7 @@ if __name__ == '__main__':
     # calibrate.calibrateExtrinsic()
     # calibrate.saveFrame()
     # calibrate.createLookupTable()
-    bs.createBackgroundModel()
-    bs.GenerateForeground()
+    # bs.createBackgroundModel()
+    # bs.GenerateForeground()
+
+    print("main")
