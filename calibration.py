@@ -176,37 +176,37 @@ def createLookupTable():
     Zl = 2
     Zh = -16
 
-    voxelCoordinates = []
+    #voxelCoordinates = []
 
-    #frameName = "frame" + str(i + 1) + ".png"
-    frame = cv.imread("frame1.png")
-    #output = "camera_extrinsics" + str(i + 1) + ".npz"
-    with np.load("camera_extrinsics1.npz") as file:
-        rotation, translation = [file[i] for i in ['rvec', 'tvec']]
-
-    for x in np.arange(Xl, Xh, 0.5):
-        for y in np.arange(Yl, Yh, 0.5):
-            for z in np.arange(Zh, Zl, 0.5):
-                output = []
-                # Get the projected point of the voxel position.
-                voxelPoint = np.float32((x, y, z)) * tileSize
-                voxelCoordinate, jac = cv.projectPoints(voxelPoint, rotation, translation, intrinsicMatrix, dist)
-                voxelCoordinates.append(voxelCoordinate)
-
-                fx = int(voxelCoordinate[0][0][0])
-                fy = int(voxelCoordinate[0][0][1])
-
-                Xc = voxelPoint[0]
-                Yc = voxelPoint[1]
-                Zc = voxelPoint[2]
-
-                output.append((fy, fx))
-
-                # Store 2d points as key and array of voxels as value
-                if (Xc, Yc, Zc) in cameraLookupTable:
-                    cameraLookupTable[(Xc, Yc, Zc)].append((fy, fx))
-                else:
-                    cameraLookupTable[(Xc, Yc, Zc)] = output
+    # #frameName = "frame" + str(i + 1) + ".png"
+    # frame = cv.imread("frame1.png")
+    # #output = "camera_extrinsics" + str(i + 1) + ".npz"
+    # with np.load("camera_extrinsics1.npz") as file:
+    #     rotation, translation = [file[i] for i in ['rvec', 'tvec']]
+    #
+    # for x in np.arange(Xl, Xh, 0.5):
+    #     for y in np.arange(Yl, Yh, 0.5):
+    #         for z in np.arange(Zh, Zl, 0.5):
+    #             output = []
+    #             # Get the projected point of the voxel position.
+    #             voxelPoint = np.float32((x, y, z)) * tileSize
+    #             voxelCoordinate, jac = cv.projectPoints(voxelPoint, rotation, translation, intrinsicMatrix, dist)
+    #             voxelCoordinates.append(voxelCoordinate)
+    #
+    #             fx = int(voxelCoordinate[0][0][0])
+    #             fy = int(voxelCoordinate[0][0][1])
+    #
+    #             Xc = voxelPoint[0]
+    #             Yc = voxelPoint[1]
+    #             Zc = voxelPoint[2]
+    #
+    #             output.append((fy, fx))
+    #
+    #             # Store 2d points as key and array of voxels as value
+    #             if (Xc, Yc, Zc) in cameraLookupTable:
+    #                 cameraLookupTable[(Xc, Yc, Zc)].append((fy, fx))
+    #             else:
+    #                 cameraLookupTable[(Xc, Yc, Zc)] = output
 
     # Draw the voxels for confirmation.
     # for voxel in voxelCoordinates:

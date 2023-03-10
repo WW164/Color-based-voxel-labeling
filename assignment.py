@@ -25,7 +25,7 @@ def loadPickle(type):
         with open('lookupTable.pickle', 'rb') as handle:
             lookupTable = pickle.load(handle)
     else:
-        with open('xorLookupTable.pickle', 'rb') as handle:
+        with open('xor.pickle', 'rb') as handle:
             lookupTable = pickle.load(handle)
 
     return lookupTable
@@ -64,12 +64,8 @@ def GetForegroundValue(foregroundImages, index, coords):
     x, y = coords
 
     img = foregroundImages[index]
-
-    # temp = cv.circle(img, (int(x), int(y)), 5, (255, 0, 0), 2)
-    # print([int(x), int(y)])
-    # cv.imshow('temp', temp)
-    # cv.waitKey(0)
-    if x < len(foregroundImages) and y < len(foregroundImages):
+    maxX, maxY = img.shape
+    if x < maxX and y < maxY:
         return np.linalg.norm(img[int(x), int(y)]) > 1
 
 
@@ -77,25 +73,21 @@ def GenerateForeground():
     global frameIndex
     foregroundImages = []
 
-    image = cv.imread("foreground1.png")
-    foregroundImages.append(image)
-
+    for i in range(4):
+        filepath = os.path.join("4persons", "video")
+        videoName = "video" + str(i + 1) + ".avi"
+        videoPath = os.path.join(filepath, videoName)
+        video = cv.VideoCapture(videoPath)
+        totalFrames = video.get(cv.CAP_PROP_FRAME_COUNT)
+        #check for valid frame number
+        if frameIndex >= 0 & frameIndex <= totalFrames:
+            video.set(cv.CAP_PROP_POS_FRAMES, frameIndex)
+            ret, frame = video.read()
+            result = bs.backgroundSubtraction(frame, i)
+            foregroundImages.append(result)
+        else:
+            print("ERROR: Invalid Frame")
     return foregroundImages
-    # for i in range(4):
-        #filepath = os.path.join("4persons", "video")
-
-        # videoPath = os.path.join(filepath, videoName)
-        # video = cv.VideoCapture(videoPath)
-        # totalFrames = video.get(cv.CAP_PROP_FRAME_COUNT)
-        # check for valid frame number
-        # if frameIndex >= 0 & frameIndex <= totalFrames:
-        #     video.set(cv.CAP_PROP_POS_FRAMES, frameIndex)
-        #     ret, frame = video.read()
-        #     result = bs.backgroundSubtraction(frame, i)
-        #     foregroundImages.append(result)
-        # else:
-        #     print("ERROR: Invalid Frame")
-
 
 
 def finaliseVoxels(width, height, depth):
@@ -120,14 +112,13 @@ def finaliseVoxels(width, height, depth):
 
 def FirstFrameVoxelPositions(foregroundImages, width, height, depth):
     global voxelsOnCam
-    data = []
-
+    voxelsOnCam = {0: [], 1: [], 2: [], 3: []}
     for pixel in pixels:
+        x,y = pixel
         for j in range(len(foregroundImages)):
-            if pixel[0] < len(foregroundImages) and pixel[1] < len(foregroundImages[j]):
-                #print(pixel[0])
+            maxX, maxY = foregroundImages[j].shape
+            if x < maxX and y < maxY:
                 if np.linalg.norm(foregroundImages[j][pixel]) > 1:
-                    data.append(pixel)
                     for voxel in pixels[pixel]:
                         if voxel[3] == j:
                             vCoord = (voxel[0], voxel[1], voxel[2])
@@ -167,7 +158,7 @@ def XORFrameVoxelPositions(currImgs, prevImgs, width, height, depth):
                                 break
 
     data, colors = finaliseVoxels(width, height, depth)
-    #print("My new method took", time.time() - start_time, "to run")
+    print("My new method took", time.time() - start_time, "to run")
     return data, colors
 
 
@@ -175,55 +166,56 @@ def set_voxel_positions(width, height, depth):
     global frameIndex, previousForegroundImages
     foregroundImages = GenerateForeground()
 
-    # if frameIndex == 1:
-    #     data, colors = FirstFrameVoxelPositions(foregroundImages, width, height, depth)
-    #
-    # else:
-    #     data, colors = (XORFrameVoxelPositions(foregroundImages, previousForegroundImages, width, height, depth))
-    # previousForegroundImages = foregroundImages
-    # frameIndex += 1
-    # return data, colors
-    #
-    # start_time = time.time()
-    Xl = -10
-    Xh = 23
-    Yl = -19
-    Yh = 14
-    Zl = 2
-    Zh = -16
+    #if frameIndex == 1:
+    data, colors = FirstFrameVoxelPositions(foregroundImages, width, height, depth)
 
-    data, colors = [], []
-
-    for x in np.arange(Xl, Xh, 0.5):
-        for y in np.arange(Yl, Yh, 0.5):
-            for z in np.arange(Zh, Zl, 0.5):
-                voxelPoint = np.float32((x, y, z)) * tileSize
-                Xc = voxelPoint[0]
-                Yc = voxelPoint[1]
-                Zc = voxelPoint[2]
-                boolValues = []
-                for j in range(1):
-                    #print(voxels)
-                    if GetForegroundValue(foregroundImages, j, voxels[Xc, Yc, Zc][j]):
-                        boolValues.append(True)
-                        print("done")
-                    else:
-                        boolValues.append(False)
-                        break
-
-                # #print(boolValues)
-                scalar = 0.01
-                fixedPoint = (Xc * scalar, -Zc * scalar, Yc * scalar)
-
-                if np.all(boolValues):
-                    data.append((fixedPoint[0] + 15,
-                                 fixedPoint[1],
-                                 fixedPoint[2]))
-                    colors.append([x / width, z / depth, y / height])
-    #print("done")
-    #print("My old method took", time.time() - start_time, "to run")
-    frameIndex += 1
+    #else:
+    #    data, colors = (XORFrameVoxelPositions(foregroundImages, previousForegroundImages, width, height, depth))
+    previousForegroundImages = foregroundImages
+    frameIndex += 100
     return data, colors
+
+    # start_time = time.time()
+    # Xl = -10
+    # Xh = 23
+    # Yl = -19
+    # Yh = 14
+    # Zl = 2
+    # Zh = -16
+    #
+    # data, colors = [], []
+    #
+    # for x in np.arange(Xl, Xh, 0.5):
+    #     for y in np.arange(Yl, Yh, 0.5):
+    #         for z in np.arange(Zh, Zl, 0.5):
+    #             voxelPoint = np.float32((x, y, z)) * tileSize
+    #             Xc = voxelPoint[0]
+    #             Yc = voxelPoint[1]
+    #             Zc = voxelPoint[2]
+    #             boolValues = []
+    #             for j in range(4):
+    #                 print(j)
+    #                 print(voxels[Xc, Yc, Zc][j])
+    #                 if GetForegroundValue(foregroundImages, j, voxels[Xc, Yc, Zc][j]):
+    #                     boolValues.append(True)
+    #                     print("done")
+    #                 else:
+    #                     boolValues.append(False)
+    #                     break
+    #
+    #             # #print(boolValues)
+    #             scalar = 0.01
+    #             fixedPoint = (Xc * scalar, -Zc * scalar, Yc * scalar)
+    #
+    #             if np.all(boolValues):
+    #                 data.append((fixedPoint[0] + 15,
+    #                              fixedPoint[1],
+    #                              fixedPoint[2]))
+    #                 colors.append([x / width, z / depth, y / height])
+    # print("done")
+    # print("My old method took", time.time() - start_time, "to run")
+    # frameIndex += 10
+    # return data, colors
 
 
 def get_cam_positions():
