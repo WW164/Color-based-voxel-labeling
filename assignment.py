@@ -1,5 +1,4 @@
 import glm
-import random
 import numpy as np
 import cv2 as cv
 import os
@@ -7,6 +6,8 @@ from numpy import load
 import pickle
 import background_subtraction as bs
 import time
+import calibration as calibrate
+import matplotlib.pyplot as plt
 
 block_size = 1
 frameCellWidth = 1000
@@ -21,7 +22,6 @@ voxelsOnCam = {0: [], 1: [], 2: [], 3: []}
 
 def loadPickle(type):
     if type == 'voxels':
-        pass
         with open('lookupTable.pickle', 'rb') as handle:
             lookupTable = pickle.load(handle)
     else:
@@ -114,10 +114,10 @@ def FirstFrameVoxelPositions(foregroundImages, width, height, depth):
     global voxelsOnCam
     voxelsOnCam = {0: [], 1: [], 2: [], 3: []}
     for pixel in pixels:
-        x,y = pixel
+        x, y = pixel
         for j in range(len(foregroundImages)):
             maxX, maxY = foregroundImages[j].shape
-            if x < maxX and y < maxY:
+            if abs(x) < maxX and abs(y) < maxY:
                 if np.linalg.norm(foregroundImages[j][pixel]) > 1:
                     for voxel in pixels[pixel]:
                         if voxel[3] == j:
@@ -162,6 +162,51 @@ def XORFrameVoxelPositions(currImgs, prevImgs, width, height, depth):
     return data, colors
 
 
+def cluster(voxels):
+    criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+    clusteredVoxels = []
+    persons = {}
+
+    for voxel in voxels:
+        voxel = np.delete(voxel, 1)
+        clusteredVoxels.append(np.float32(voxel))
+
+    clusteredVoxels = np.array(clusteredVoxels)
+    voxels = np.array(voxels)
+
+    compactness, labels, centers = cv.kmeans(clusteredVoxels, 4, None, criteria, 10, flags=cv.KMEANS_RANDOM_CENTERS)
+
+    for i in range(4):
+        persons[i] = voxels[labels.ravel() == i]
+        # person1 = voxels[labels.ravel() == 0]
+        # person2 = voxels[labels.ravel() == 1]
+        # person3 = voxels[labels.ravel() == 2]
+        # person4 = voxels[labels.ravel() == 3]
+
+    return centers, persons
+
+
+def createColorModel(colorModel):
+
+    for person in colorModel:
+        bChannel = []
+        gChannel = []
+        rChannel = []
+
+        for color in colorModel[person]:
+            bChannel.append(color[0])
+            gChannel.append(color[1])
+            rChannel.append(color[2])
+        points = np.arange(0, len(colorModel[person]), 1)
+        plt.hist(bChannel, points, color='blue', label='blue', density=True)
+        plt.hist(gChannel, points, color='green', label='green', density=True)
+        plt.hist(rChannel, points, color='red', label='red', density=True)
+        plt.ylabel('points')
+        title = "person" + str(person)
+        plt.title(title)
+        plt.show()
+
+
 def set_voxel_positions(width, height, depth):
     global frameIndex, previousForegroundImages
     foregroundImages = GenerateForeground()
@@ -173,6 +218,63 @@ def set_voxel_positions(width, height, depth):
     #    data, colors = (XORFrameVoxelPositions(foregroundImages, previousForegroundImages, width, height, depth))
     previousForegroundImages = foregroundImages
     frameIndex += 100
+
+    centers, persons = cluster(data)
+
+    data.clear()
+    colors.clear()
+
+    for center in centers:
+        center = [center[0]] + [10] + [center[1]]
+        data.append(center)
+        colors.append((255, 255, 255))
+
+    intrinsicMatrix, dist = calibrate.loadIntrinsics()
+
+    fileName = "camera_extrinsics2.npz"
+    with np.load(fileName) as file:
+        rotation, translation = [file[j] for j in ['rvec', 'tvec']]
+
+    imageName = "foreground2.png"
+    frameName = "frame2.png"
+    image = cv.imread(imageName)
+    frame = cv.imread(frameName)
+
+    colorModel = {}
+    scalar = 100
+
+    for person in persons:
+        color = []
+        for voxel in persons[person]:
+            x = voxel[0]
+            y = voxel[1]
+            z = voxel[2]
+
+            if 15 > y > 8:
+                voxelPoint = (x * scalar,
+                              z * scalar,
+                              -y * scalar)
+                personCoordinate, jac = cv.projectPoints(voxelPoint, rotation, translation, intrinsicMatrix, dist)
+                fx = int(personCoordinate[0][0][1])
+                fy = int(personCoordinate[0][0][0])
+                (b, g, r) = frame[fx, fy]
+                if int(b) and int(g) and int(r) > 10:
+                    color.append((b, g, r))
+                    img = cv.circle(image, (int(personCoordinate[0][0][0]), int(personCoordinate[0][0][1])), 1, (int(b), int(g), int(r)), 2)
+        cv.imshow('img', img)
+        cv.waitKey(500)
+
+        colorModel[person] = color
+
+    createColorModel(colorModel)
+
+    for person in persons:
+        for voxel in persons[person]:
+            data.append(voxel)
+            colors.append((0, 0, 0))
+
+    cv.destroyAllWindows()
+
     return data, colors
 
     # start_time = time.time()
