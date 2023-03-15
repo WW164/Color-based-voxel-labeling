@@ -65,7 +65,7 @@ def xorLookupTable():
 if __name__ == '__main__':
     # calibrate.calibrateExtrinsic()
     # calibrate.saveFrame()
-    calibrate.createLookupTable()
+    # calibrate.createLookupTable()
     # bs.createBackgroundModel()
     # bs.GenerateForeground()
     # xorLookupTable()
