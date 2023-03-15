@@ -8,6 +8,7 @@ import background_subtraction as bs
 import time
 import calibration as calibrate
 import matplotlib.pyplot as plt
+from PIL import Image as im
 
 block_size = 1
 frameCellWidth = 1000
@@ -17,6 +18,7 @@ frameIndex = 1
 pixels = []
 voxels = []
 previousForegroundImages = []
+previousFramesHists = {}
 voxelsOnCam = {0: [], 1: [], 2: [], 3: []}
 
 
@@ -189,6 +191,7 @@ def cluster(voxels):
 def createColorModel(colorModel):
 
     for person in colorModel:
+
         bChannel = []
         gChannel = []
         rChannel = []
@@ -197,14 +200,33 @@ def createColorModel(colorModel):
             bChannel.append(color[0])
             gChannel.append(color[1])
             rChannel.append(color[2])
-        bins = np.arange(0, 256, 16)
-        plt.hist(bChannel, bins, color='blue', label='blue', density=True)
-        plt.hist(gChannel, bins, color='green', label='green', density=True)
-        plt.hist(rChannel, bins, color='red', label='red', density=True)
-        plt.ylabel('points')
-        title = "person" + str(person+1)
-        plt.title(title)
-        plt.show()
+        bins = np.arange(0, 256, 1)
+        blueHist, b, p = plt.hist(bChannel, bins, color='blue', label='blue', density=True)
+        greenHist, b, p = plt.hist(gChannel, bins, color='green', label='green', density=True)
+        redHist, b, p = plt.hist(rChannel, bins, color='red', label='red', density=True)
+        blueHist = np.float32(blueHist)
+        greenHist = np.float32(greenHist)
+        redHist = np.float32(redHist)
+
+        cv.normalize(blueHist, blueHist, alpha=0, beta=1, norm_type=cv.NORM_MINMAX)
+        cv.normalize(greenHist, greenHist, alpha=0, beta=1, norm_type=cv.NORM_MINMAX)
+        cv.normalize(redHist, redHist, alpha=0, beta=1, norm_type=cv.NORM_MINMAX)
+
+        #plt.ylabel('points')
+        #title = "person" + str(person+1)
+        #plt.title(title)
+        #plt.show()
+        for p in colorModel:
+            if frameIndex != 1:
+                previousBlueHist = previousFramesHists[p][0]
+                previousGreenHist = previousFramesHists[p][1]
+                previousRedHist = previousFramesHists[p][2]
+                blue_comparison = cv.compareHist(blueHist, previousBlueHist, cv.HISTCMP_CORREL)
+                green_comparison = cv.compareHist(greenHist, previousGreenHist, cv.HISTCMP_CORREL)
+                red_comparison = cv.compareHist(redHist, previousRedHist, cv.HISTCMP_CORREL)
+                print("Person: ",person,"this frame and person ",p ," last frame have a similarity value of:", (blue_comparison+green_comparison+red_comparison)/3)
+        print("DONE FRAME", frameIndex)
+        previousFramesHists[person] = [blueHist, greenHist, redHist]
 
 
 def set_voxel_positions(width, height, depth):
@@ -217,7 +239,7 @@ def set_voxel_positions(width, height, depth):
     #else:
     #    data, colors = (XORFrameVoxelPositions(foregroundImages, previousForegroundImages, width, height, depth))
     previousForegroundImages = foregroundImages
-    frameIndex += 100
+
 
     centers, persons = cluster(data)
 
@@ -259,10 +281,11 @@ def set_voxel_positions(width, height, depth):
                 fy = int(personCoordinate[0][0][0])
                 (b, g, r) = frame[fx, fy]
                 if int(b) and int(g) and int(r) > 10:
+
                     color.append((b, g, r))
-                    img = cv.circle(image, (int(personCoordinate[0][0][0]), int(personCoordinate[0][0][1])), 1, (int(b), int(g), int(r)), 2)
-        cv.imshow('img', img)
-        cv.waitKey(500)
+                    #img = cv.circle(image, (int(personCoordinate[0][0][0]), int(personCoordinate[0][0][1])), 1, (int(b), int(g), int(r)), 2)
+        #cv.imshow('img', img)
+        #cv.waitKey(500)
 
         colorModel[person] = color
 
@@ -274,50 +297,8 @@ def set_voxel_positions(width, height, depth):
             colors.append((0, 0, 0))
 
     cv.destroyAllWindows()
-
+    frameIndex += 1
     return data, colors
-
-    # start_time = time.time()
-    # Xl = -10
-    # Xh = 23
-    # Yl = -19
-    # Yh = 14
-    # Zl = 2
-    # Zh = -16
-    #
-    # data, colors = [], []
-    #
-    # for x in np.arange(Xl, Xh, 0.5):
-    #     for y in np.arange(Yl, Yh, 0.5):
-    #         for z in np.arange(Zh, Zl, 0.5):
-    #             voxelPoint = np.float32((x, y, z)) * tileSize
-    #             Xc = voxelPoint[0]
-    #             Yc = voxelPoint[1]
-    #             Zc = voxelPoint[2]
-    #             boolValues = []
-    #             for j in range(4):
-    #                 print(j)
-    #                 print(voxels[Xc, Yc, Zc][j])
-    #                 if GetForegroundValue(foregroundImages, j, voxels[Xc, Yc, Zc][j]):
-    #                     boolValues.append(True)
-    #                     print("done")
-    #                 else:
-    #                     boolValues.append(False)
-    #                     break
-    #
-    #             # #print(boolValues)
-    #             scalar = 0.01
-    #             fixedPoint = (Xc * scalar, -Zc * scalar, Yc * scalar)
-    #
-    #             if np.all(boolValues):
-    #                 data.append((fixedPoint[0] + 15,
-    #                              fixedPoint[1],
-    #                              fixedPoint[2]))
-    #                 colors.append([x / width, z / depth, y / height])
-    # print("done")
-    # print("My old method took", time.time() - start_time, "to run")
-    # frameIndex += 10
-    # return data, colors
 
 
 def get_cam_positions():
