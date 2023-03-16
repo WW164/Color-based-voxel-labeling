@@ -183,13 +183,15 @@ def cluster(voxels):
 
 
 def createColorModel(colorModel):
+    global previousFramesHists
+    temp = {}
     for person in colorModel:
 
         hsvColor = np.array(colorModel[person], dtype=np.float32)
         hsvColor = np.reshape(hsvColor, (20, 20, 3))
 
-        cv.imshow('test', hsvColor)
-        cv.waitKey(500)
+        #cv.imshow('test', hsvColor)
+        #cv.waitKey(500)
 
         # plt.plot(hsvColor)
 
@@ -200,22 +202,22 @@ def createColorModel(colorModel):
         # frame = cv.imread("frame1.png")
 
         h_hist = cv.calcHist(hsvColor, [0], None, [histSize], histRange, accumulate=accumulate)
-        plt.plot(h_hist)
+        #plt.plot(h_hist)
         cv.normalize(h_hist, h_hist, alpha=0, beta=1, norm_type=cv.NORM_MINMAX)
 
         # plt.ylabel('points')
         # title = "person" + str(person+1)
         # plt.title(title)
-        plt.show()
+        #plt.show()
         for p in colorModel:
             if frameIndex != 1:
-                previousBlueHist = previousFramesHists[p][0]
+                previousBlueHist = previousFramesHists[p]
                 blue_comparison = cv.compareHist(h_hist, previousBlueHist, cv.HISTCMP_CORREL)
                 print("Person: ", person, "this frame and person ", p, " last frame have a similarity value of:",
                       blue_comparison)
         print("DONE FRAME", frameIndex)
-        previousFramesHists[person] = [h_hist]
-
+        temp[person] = h_hist
+    previousFramesHists = temp
 
 def set_voxel_positions(width, height, depth):
     global frameIndex, previousForegroundImages
@@ -286,7 +288,7 @@ def projectVoxels(persons):
                 fx = int(personCoordinate[0][0][1])
                 fy = int(personCoordinate[0][0][0])
                 hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
-                (h, s, v) = frame[fx, fy]
+                (h, s, v) = hsv[fx, fy]
                 if len(color) < 400:
                     color.append((h, s, v))
                 else:
@@ -296,8 +298,6 @@ def projectVoxels(persons):
         # cv.imshow('img', img)
         # cv.waitKey(5000)
 
-        # color = np.array(color, dtype=np.float32)
-        # color = np.reshape(color, ((len(color)), 1, 3))
         colorModel[person] = color
     return colorModel
 
