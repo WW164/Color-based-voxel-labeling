@@ -26,6 +26,10 @@ def loadPickle(type):
     if type == 'voxels':
         with open('lookupTable.pickle', 'rb') as handle:
             lookupTable = pickle.load(handle)
+
+    elif type == 'colorModel':
+        with open('colorModel.pickle', 'rb') as handle:
+            lookupTable = pickle.load(handle)
     else:
         with open('xor.pickle', 'rb') as handle:
             lookupTable = pickle.load(handle)
@@ -182,42 +186,39 @@ def cluster(voxels):
     return centers, persons
 
 
-def createColorModel(colorModel):
+def createColorModel(colorModel, persons):
     global previousFramesHists
-    temp = {}
+    hist = loadPickle("colorModel")
+    adjustedPerson = {}
+
     for person in colorModel:
 
         hsvColor = np.array(colorModel[person], dtype=np.float32)
         hsvColor = np.reshape(hsvColor, (20, 20, 3))
 
-        #cv.imshow('test', hsvColor)
-        #cv.waitKey(500)
-
-        # plt.plot(hsvColor)
-
         histSize = 256
         histRange = (0, 256)
         accumulate = False
 
-        # frame = cv.imread("frame1.png")
-
         h_hist = cv.calcHist(hsvColor, [0], None, [histSize], histRange, accumulate=accumulate)
-        #plt.plot(h_hist)
         cv.normalize(h_hist, h_hist, alpha=0, beta=1, norm_type=cv.NORM_MINMAX)
 
-        # plt.ylabel('points')
-        # title = "person" + str(person+1)
-        # plt.title(title)
-        #plt.show()
+        comparisons = []
+
         for p in colorModel:
-            if frameIndex != 1:
-                previousBlueHist = previousFramesHists[p]
-                blue_comparison = cv.compareHist(h_hist, previousBlueHist, cv.HISTCMP_CORREL)
-                print("Person: ", person, "this frame and person ", p, " last frame have a similarity value of:",
-                      blue_comparison)
-        print("DONE FRAME", frameIndex)
-        temp[person] = h_hist
-    previousFramesHists = temp
+            originalHist = hist[p]
+            comparison = cv.compareHist(h_hist, originalHist, cv.HISTCMP_CORREL)
+            print("Person: ", person, "this frame and person ", p, " last frame have a similarity value of:",
+                  comparison)
+            comparisons.append(comparison)
+
+        print("Max similarity for person ", person, "is: ", comparisons[comparisons.index(max(comparisons))],
+              "and with person: ", comparisons.index(max(comparisons)))
+
+        adjustedPerson[comparisons.index(max(comparisons))] = persons[person]
+
+    return adjustedPerson
+
 
 def set_voxel_positions(width, height, depth):
     global frameIndex, previousForegroundImages
@@ -239,20 +240,20 @@ def set_voxel_positions(width, height, depth):
     for center in centers:
         center = [center[0]] + [10] + [center[1]]
         data.append(center)
-        colors.append((1, 1, 1))
+        colors.append((0, 0, 0))
 
     colorModel = projectVoxels(persons)
+    persons = createColorModel(colorModel, persons)
 
-    createColorModel(colorModel)
-
-    r = 0
-    g = 0
-    b = 0
+    averageColor = [[0, 255, 255],
+                    [255, 255, 0],
+                    [255, 0, 255],
+                    [0, 255, 0]]
 
     for person in persons:
         for voxel in persons[person]:
             data.append(voxel)
-            colors.append(((r + 50 * person) / 250, (g + 50 * person) / 250, (b + 50 * person) / 250))
+            colors.append((averageColor[person][0] / 256, averageColor[person][1] / 256, averageColor[person][2] / 256))
 
     cv.destroyAllWindows()
     frameIndex += 1
