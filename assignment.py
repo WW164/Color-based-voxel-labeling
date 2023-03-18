@@ -20,6 +20,12 @@ voxels = []
 previousForegroundImages = []
 previousFramesHists = {}
 voxelsOnCam = {0: [], 1: [], 2: [], 3: []}
+centerLocations = []
+scalar = 100
+averageColor = [[0, 255, 255],
+                [255, 255, 0],
+                [255, 0, 255],
+                [0, 255, 0]]
 
 
 def loadPickle(type):
@@ -186,10 +192,11 @@ def cluster(voxels):
     return centers, persons
 
 
-def createColorModel(colorModel, persons):
+def createColorModel(colorModel, persons, centers):
     global previousFramesHists
     hist = loadPickle("colorModel")
     adjustedPerson = {}
+    adjustedCenters = {}
 
     for person in colorModel:
 
@@ -216,26 +223,44 @@ def createColorModel(colorModel, persons):
               "and with person: ", comparisons.index(max(comparisons)))
 
         adjustedPerson[comparisons.index(max(comparisons))] = persons[person]
+        adjustedCenters[comparisons.index(max(comparisons))] = centers[person]
 
-    return adjustedPerson
+    return adjustedPerson, adjustedCenters
 
 
-# def trajectoryImage(centers):
-#     IMG_WIDTH = 750
-#     IMG_HEIGHT = 750
-#
-#     # Create a new image
-#     img = np.zeros((IMG_HEIGHT, IMG_WIDTH, 3), np.uint8)
-#
-#     for i in range(4):
-#         print((int(centers[i][0]) * 100, int(centers[i][1]) * 100))
-#         cv.circle(img, (int(centers[i][0]) * 100, int(centers[i][1]) * -100), 1, (255, 255, 255), -1)
-#
-#     cv.imshow("Trajectory", img)
-#     cv.waitKey(5000)
+def trajectoryImage():
+    global centerLocations, scalar, averageColor
+
+    IMG_WIDTH = 750
+    IMG_HEIGHT = 750
+
+    # Create a new image
+    img = np.zeros((IMG_HEIGHT, IMG_WIDTH, 3), np.uint8)
+
+    for center in centerLocations:
+        intrinsicMatrix, dist = calibrate.loadIntrinsics()
+        fileName = "camera_extrinsics2.npz"
+        with np.load(fileName) as file:
+            rotation, translation = [file[j] for j in ['rvec', 'tvec']]
+
+        x = center[0]
+        y = center[1]
+        z = center[2]
+
+        trajectoryPoint = (x * scalar,
+                           z * scalar,
+                           -y * scalar)
+        trajectoryCoordinate, jac = cv.projectPoints(trajectoryPoint, rotation, translation, intrinsicMatrix, dist)
+        img = cv.circle(img, (int(trajectoryCoordinate[0][0][0]), int(trajectoryCoordinate[0][0][1])), 1,
+                        averageColor[centerLocations.index(center) % 4], -1)
+
+    cv.imwrite('trajectory.png', img)
+    # cv.imshow("Trajectory", img)
+    # cv.waitKey(500)
+
 
 def set_voxel_positions(width, height, depth):
-    global frameIndex, previousForegroundImages
+    global frameIndex, previousForegroundImages, averageColor, centerLocations
     foregroundImages = GenerateForeground()
 
     # if frameIndex == 1:
@@ -251,32 +276,41 @@ def set_voxel_positions(width, height, depth):
     data.clear()
     colors.clear()
 
-    for center in centers:
-        center = [center[0]] + [10] + [center[1]]
-        data.append(center)
-        colors.append((0, 0, 0))
+    # for center in centerLocations:
+    #     data.append(center)
+    #     colors.append((1, 0, 0))
 
-    # trajectoryImage(centers)
+    print("version 1: ", centers)
 
     colorModel = projectVoxels(persons)
-    persons = createColorModel(colorModel, persons)
+    persons, centers = createColorModel(colorModel, persons, centers)
 
-    averageColor = [[0, 255, 255],
-                    [255, 255, 0],
-                    [255, 0, 255],
-                    [0, 255, 0]]
+    print("version 2: ", centers)
+
+    for center in centers:
+        center = [centers[center][0]] + [0] + [centers[center][1]]
+        centerLocations.append(center)
+
+    print("center location is: ", centerLocations)
+
+    trajectoryImage()
 
     for person in persons:
         for voxel in persons[person]:
             data.append(voxel)
             colors.append((averageColor[person][0] / 256, averageColor[person][1] / 256, averageColor[person][2] / 256))
 
+    # for center in centerLocations:
+    #     data.append(center)
+    #     colors.append()
+
     cv.destroyAllWindows()
-    frameIndex += 1
+    frameIndex += 5
     return data, colors
 
 
 def projectVoxels(persons):
+    global scalar
     intrinsicMatrix, dist = calibrate.loadIntrinsics()
     fileName = "camera_extrinsics2.npz"
     with np.load(fileName) as file:
@@ -289,7 +323,6 @@ def projectVoxels(persons):
     video.set(cv.CAP_PROP_POS_FRAMES, frameIndex)
     success, frame = video.read()
     colorModel = {}
-    scalar = 100
     for person in persons:
         color = []
         for voxel in persons[person]:
@@ -311,7 +344,7 @@ def projectVoxels(persons):
                 else:
                     break
         #         img = cv.circle(frame, (int(personCoordinate[0][0][0]), int(personCoordinate[0][0][1])), 1,
-        #                             (int(h), int(s), int(v)), 2)
+        #                         (int(h), int(s), int(v)), 2)
         # cv.imshow('img', img)
         # cv.waitKey(5000)
 
