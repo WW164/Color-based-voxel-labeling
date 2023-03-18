@@ -7,8 +7,6 @@ import pickle
 import background_subtraction as bs
 import time
 import calibration as calibrate
-import matplotlib.pyplot as plt
-from PIL import Image as im
 
 block_size = 1
 frameCellWidth = 1000
@@ -20,6 +18,8 @@ voxels = []
 previousForegroundImages = []
 previousFramesHists = {}
 voxelsOnCam = {0: [], 1: [], 2: [], 3: []}
+lastFrame = 2726
+VoxelCountList = {}
 
 
 def loadPickle(type):
@@ -98,25 +98,28 @@ def GenerateForeground():
 def finaliseVoxels(width, height, depth):
     data, colors = [], []
     onVoxels = set.intersection(set(voxelsOnCam[0]), set(voxelsOnCam[1]), set(voxelsOnCam[2]), set(voxelsOnCam[3]))
+    VoxelCountList
+    for vox in VoxelCountList:
+        if(VoxelCountList[vox] == 4):
+            Xc = vox[0]
+            Yc = vox[1]
+            Zc = vox[2]
 
-    for vox in onVoxels:
-        Xc = vox[0]
-        Yc = vox[1]
-        Zc = vox[2]
-
-        scalar = 0.01
-        fixedPoint = (Xc * scalar, -Zc * scalar, Yc * scalar)
-        data.append((fixedPoint[0],
-                     fixedPoint[1],
-                     fixedPoint[2]))
-        colors.append([fixedPoint[0] / width, fixedPoint[1] / depth, fixedPoint[2] / height])
+            scalar = 0.01
+            fixedPoint = (Xc * scalar, -Zc * scalar, Yc * scalar)
+            data.append((fixedPoint[0],
+                         fixedPoint[1],
+                         fixedPoint[2]))
+            colors.append([fixedPoint[0] / width, fixedPoint[1] / depth, fixedPoint[2] / height])
 
     return data, colors
 
 
 def FirstFrameVoxelPositions(foregroundImages, width, height, depth):
     global voxelsOnCam
+    start_time = time.time()
     voxelsOnCam = {0: [], 1: [], 2: [], 3: []}
+    print("length of pixels", len(pixels))
     for pixel in pixels:
         x, y = pixel
         for j in range(len(foregroundImages)):
@@ -127,8 +130,9 @@ def FirstFrameVoxelPositions(foregroundImages, width, height, depth):
                         if voxel[3] == j:
                             vCoord = (voxel[0], voxel[1], voxel[2])
                             voxelsOnCam[j].append(vCoord)
+                            VoxelCountList[vCoord] += 1
     data, colors = finaliseVoxels(width, height, depth)
-
+    print("My old method took", time.time() - start_time, "to run")
     return data, colors
 
 
@@ -139,6 +143,8 @@ def XORFrameVoxelPositions(currImgs, prevImgs, width, height, depth):
         mask_xor = cv.bitwise_xor(currImgs[i], prevImgs[i])
         nowOnPixels = cv.bitwise_and(currImgs[i], mask_xor)
         nowOnPixels = np.argwhere(nowOnPixels == 255)
+
+        OnPixels_StartTime = time.time()
         for pixel in nowOnPixels:
             x, y = pixel
             if (x, y) in pixels:
@@ -146,20 +152,29 @@ def XORFrameVoxelPositions(currImgs, prevImgs, width, height, depth):
                     if values[3] == i:
                         vCoord = (values[0], values[1], values[3])
                         voxelsOnCam[i].append(vCoord)
+                        if vCoord in VoxelCountList:
+                            VoxelCountList[vCoord] += 1
 
         not_current_image = (255 - currImgs[i])
         nowOffPixels = cv.bitwise_and(not_current_image, mask_xor)
         nowOffPixels = np.argwhere(nowOffPixels == 255)
+
+        #print("now off pixels: ", len(nowOffPixels))
+        OffPixels_StartTime = time.time()
         for pixel in nowOffPixels:
             x, y = pixel
             if (x, y) in pixels:
                 for values in pixels[(x, y)]:
                     if values[3] == i:
                         vCoord = (values[0], values[1], values[3])
-                        for j in range(len(voxelsOnCam[i]) - 1):
-                            if voxelsOnCam[i][j] == vCoord:
-                                del voxelsOnCam[i][j]
-                                break
+                        if vCoord in VoxelCountList:
+                            VoxelCountList[vCoord] -= 1
+                        #    voxelsOnCam[i].remove(vCoord)
+                        #    break
+                        #else:
+                        #    continue
+
+        #print("Now Off Pixels Loop took", time.time() - OffPixels_StartTime, "to run")
 
     data, colors = finaliseVoxels(width, height, depth)
     print("My new method took", time.time() - start_time, "to run")
@@ -208,41 +223,28 @@ def createColorModel(colorModel, persons):
         for p in colorModel:
             originalHist = hist[p]
             comparison = cv.compareHist(h_hist, originalHist, cv.HISTCMP_CORREL)
-            print("Person: ", person, "this frame and person ", p, " last frame have a similarity value of:",
-                  comparison)
+        #    print("Person: ", person, "this frame and person ", p, " last frame have a similarity value of:",
+        #          comparison)
             comparisons.append(comparison)
 
-        print("Max similarity for person ", person, "is: ", comparisons[comparisons.index(max(comparisons))],
-              "and with person: ", comparisons.index(max(comparisons)))
+        #print("Max similarity for person ", person, "is: ", comparisons[comparisons.index(max(comparisons))],
+        #      "and with person: ", comparisons.index(max(comparisons)))
 
         adjustedPerson[comparisons.index(max(comparisons))] = persons[person]
 
     return adjustedPerson
 
 
-# def trajectoryImage(centers):
-#     IMG_WIDTH = 750
-#     IMG_HEIGHT = 750
-#
-#     # Create a new image
-#     img = np.zeros((IMG_HEIGHT, IMG_WIDTH, 3), np.uint8)
-#
-#     for i in range(4):
-#         print((int(centers[i][0]) * 100, int(centers[i][1]) * 100))
-#         cv.circle(img, (int(centers[i][0]) * 100, int(centers[i][1]) * -100), 1, (255, 255, 255), -1)
-#
-#     cv.imshow("Trajectory", img)
-#     cv.waitKey(5000)
-
 def set_voxel_positions(width, height, depth):
+
     global frameIndex, previousForegroundImages
     foregroundImages = GenerateForeground()
 
-    # if frameIndex == 1:
-    data, colors = FirstFrameVoxelPositions(foregroundImages, width, height, depth)
+    if frameIndex == 1:
+        data, colors = FirstFrameVoxelPositions(foregroundImages, width, height, depth)
 
-    # else:
-    #    data, colors = (XORFrameVoxelPositions(foregroundImages, previousForegroundImages, width, height, depth))
+    else:
+        data, colors = (XORFrameVoxelPositions(foregroundImages, previousForegroundImages, width, height, depth))
     previousForegroundImages = foregroundImages
 
     centers, persons = cluster(data)
@@ -324,6 +326,8 @@ def get_cam_positions():
     global pixels, voxels
     pixels = loadPickle("xor")
     voxels = loadPickle("voxels")
+    for voxel in voxels:
+        VoxelCountList[voxel] = 0
     bs.createBackgroundModel()
 
     rvecs, tvecs = getData()

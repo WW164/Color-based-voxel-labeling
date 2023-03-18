@@ -7,6 +7,60 @@ import numpy as np
 
 tileSize = 115
 
+def checkVoxels():
+    cameraLookupTable = {}
+
+    # Define the range of the cube
+    Xl = -10
+    Xh = 23
+    Yl = -19
+    Yh = 14
+    Zl = 2
+    Zh = -16
+
+    # save the output in result
+    result = []
+
+    for i in range(4):
+        # Read in the foreground image.
+        voxelCoordinates = []
+        camFolder = os.path.join("4persons", "video")
+        videoName = "video" + str(i + 1) + ".avi"
+        path = os.path.join(camFolder, videoName)
+        video = cv.VideoCapture(path)
+        success, frame = video.read()
+        cameraData = "camera_extrinsics" + str(i + 1) + ".npz"
+
+        # read in the camera matrix
+        with np.load('camera_matrix.npz') as file:
+            intrinsicMatrix, dist = [file[i] for i in ['mtx', 'dist']]
+        with np.load(cameraData) as file:
+            rotation, translation = [file[i] for i in ['rvec', 'tvec']]
+
+        for x in np.arange(Xl, Xh, 0.25):
+            for y in np.arange(Yl, Yh, 0.25):
+                for z in np.arange(Zh, Zl, 0.25):
+
+                    output = []
+                    # Get the projected point of the voxel position.
+                    voxelPoint = np.float32((x, y, z)) * tileSize
+                    voxelCoordinate, jac = cv.projectPoints(voxelPoint, rotation, translation, intrinsicMatrix, dist)
+                    fx = int(voxelCoordinate[0][0][0])
+                    fy = int(voxelCoordinate[0][0][1])
+
+                    Xc = voxelPoint[0]
+                    Yc = voxelPoint[1]
+                    Zc = voxelPoint[2]
+
+                    output.append((fy, fx))
+                    voxelCoordinates.append(voxelCoordinate)
+                    # Store 3d points as key and image points as value
+                    if (Xc, Yc, Zc) in cameraLookupTable:
+                        cameraLookupTable[(Xc, Yc, Zc)].append((fy, fx))
+                    else:
+                        cameraLookupTable[(Xc, Yc, Zc)] = output
+    with open('lookupTable.pickle', 'wb') as handle:
+        pickle.dump(cameraLookupTable, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # Generate lookup table for XOR method
 def xorLookupTable():
@@ -69,5 +123,6 @@ if __name__ == '__main__':
     # bs.createBackgroundModel()
     # bs.GenerateForeground()
     # xorLookupTable()
+    checkVoxels()
 
     print("main")

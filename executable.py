@@ -9,6 +9,8 @@ from engine.effect.bloom import Bloom
 from assignment import set_voxel_positions, generate_grid, get_cam_positions, get_cam_rotation_matrices
 from engine.camera import Camera
 from engine.config import config
+import assignment as assignment
+
 
 
 cube, hdrbuffer, blurbuffer, lastPosX, lastPosY = None, None, None, None, None
@@ -185,9 +187,10 @@ def key_callback(window, key, scancode, action, mods):
         glfw.set_window_should_close(window, glfw.TRUE)
     if key == glfw.KEY_G and action == glfw.PRESS:
         global cube
-        # while not glfw.window_should_close(window):
+        #while not glfw.window_should_close(window):
         positions, colors = set_voxel_positions(config['world_width'], config['world_height'], config['world_width'])
         cube.set_multiple_positions(positions, colors)
+
 
 
 def mouse_move(win, pos_x, pos_y):
