@@ -280,18 +280,18 @@ def set_voxel_positions(width, height, depth):
     #     data.append(center)
     #     colors.append((1, 0, 0))
 
-    print("version 1: ", centers)
-
     colorModel = projectVoxels(persons)
     persons, centers = createColorModel(colorModel, persons, centers)
 
-    print("version 2: ", centers)
+    myKeys = list(centers.keys())
+    myKeys.sort()
+    centers = {i: centers[i] for i in myKeys}
 
     for center in centers:
         center = [centers[center][0]] + [0] + [centers[center][1]]
         centerLocations.append(center)
 
-    print("center location is: ", centerLocations)
+    # print("center location is: ", centerLocations)
 
     trajectoryImage()
 
