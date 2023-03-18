@@ -220,6 +220,20 @@ def createColorModel(colorModel, persons):
     return adjustedPerson
 
 
+# def trajectoryImage(centers):
+#     IMG_WIDTH = 750
+#     IMG_HEIGHT = 750
+#
+#     # Create a new image
+#     img = np.zeros((IMG_HEIGHT, IMG_WIDTH, 3), np.uint8)
+#
+#     for i in range(4):
+#         print((int(centers[i][0]) * 100, int(centers[i][1]) * 100))
+#         cv.circle(img, (int(centers[i][0]) * 100, int(centers[i][1]) * -100), 1, (255, 255, 255), -1)
+#
+#     cv.imshow("Trajectory", img)
+#     cv.waitKey(5000)
+
 def set_voxel_positions(width, height, depth):
     global frameIndex, previousForegroundImages
     foregroundImages = GenerateForeground()
@@ -241,6 +255,8 @@ def set_voxel_positions(width, height, depth):
         center = [center[0]] + [10] + [center[1]]
         data.append(center)
         colors.append((0, 0, 0))
+
+    # trajectoryImage(centers)
 
     colorModel = projectVoxels(persons)
     persons = createColorModel(colorModel, persons)
