@@ -291,8 +291,6 @@ def set_voxel_positions(width, height, depth):
         center = [centers[center][0]] + [0] + [centers[center][1]]
         centerLocations.append(center)
 
-    # print("center location is: ", centerLocations)
-
     trajectoryImage()
 
     for person in persons:
@@ -358,7 +356,7 @@ def projectVoxels(persons):
                 img = cv.circle(frame, (int(personCoordinate[0][0][0]), int(personCoordinate[0][0][1])), 1,
                                 (int(h), int(s), int(v)), 2)
         cv.imshow('img', img)
-        cv.waitKey(5000)
+        cv.waitKey(500)
 
         colorModel[person] = color
     return colorModel

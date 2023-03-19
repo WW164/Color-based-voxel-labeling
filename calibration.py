@@ -111,7 +111,7 @@ def findCorners(sampleImage):
 
 def loadIntrinsics():
 
-    #path = os.path.join("4persons", "extrinsics")
+    # path = os.path.join("4persons", "extrinsics")
     fileName = "camera_matrix.npz"
     with np.load(fileName) as file:
         mtx, d = [file[j] for j in ['mtx', 'dist']]
@@ -145,7 +145,7 @@ def calibrateExtrinsic():
         draw(frame, corners2, imgPts)
 
         output = "camera_extrinsics" + str(i+1)
-        #np.savez(output, rvec=rotation, tvec=translation)
+        # np.savez(output, rvec=rotation, tvec=translation)
 
     cv.destroyAllWindows()
 
@@ -160,8 +160,8 @@ def saveFrame():
         video.set(cv.CAP_PROP_POS_FRAMES, 510)
         success,  frame = video.read()
         if success and i == 3:
-            #frameName =
-            #cv.imwrite(("frame" + str(i+1) + ".png"), frame)
+            # frameName =
+            # cv.imwrite(("frame" + str(i+1) + ".png"), frame)
             print("Done")
 
 def createLookupTable():
@@ -175,48 +175,6 @@ def createLookupTable():
     Yh = 14
     Zl = 2
     Zh = -16
-
-    #voxelCoordinates = []
-
-    # #frameName = "frame" + str(i + 1) + ".png"
-    # frame = cv.imread("frame1.png")
-    # #output = "camera_extrinsics" + str(i + 1) + ".npz"
-    # with np.load("camera_extrinsics1.npz") as file:
-    #     rotation, translation = [file[i] for i in ['rvec', 'tvec']]
-    #
-    # for x in np.arange(Xl, Xh, 0.5):
-    #     for y in np.arange(Yl, Yh, 0.5):
-    #         for z in np.arange(Zh, Zl, 0.5):
-    #             output = []
-    #             # Get the projected point of the voxel position.
-    #             voxelPoint = np.float32((x, y, z)) * tileSize
-    #             voxelCoordinate, jac = cv.projectPoints(voxelPoint, rotation, translation, intrinsicMatrix, dist)
-    #             voxelCoordinates.append(voxelCoordinate)
-    #
-    #             fx = int(voxelCoordinate[0][0][0])
-    #             fy = int(voxelCoordinate[0][0][1])
-    #
-    #             Xc = voxelPoint[0]
-    #             Yc = voxelPoint[1]
-    #             Zc = voxelPoint[2]
-    #
-    #             output.append((fy, fx))
-    #
-    #             # Store 2d points as key and array of voxels as value
-    #             if (Xc, Yc, Zc) in cameraLookupTable:
-    #                 cameraLookupTable[(Xc, Yc, Zc)].append((fy, fx))
-    #             else:
-    #                 cameraLookupTable[(Xc, Yc, Zc)] = output
-
-    # Draw the voxels for confirmation.
-    # for voxel in voxelCoordinates:
-    #     x = int(voxel[0][0][0])
-    #     y = int(voxel[0][0][1])
-    #     # b, g, r = color[i][(x, y)]
-    #
-    #     img = cv.circle(frame, (int(voxel[0][0][0]), int(voxel[0][0][1])), 1, (255, 0, 0), 2)
-    # cv.imshow('img', img)
-    # cv.waitKey(500)
 
     for i in range(4):
         voxelCoordinates = []
@@ -247,11 +205,10 @@ def createLookupTable():
                     else:
                         cameraLookupTable[(Xc, Yc, Zc)] = [(fx, fy, i)]
 
-        #Draw the voxels for confirmation.
+        # Draw the voxels for confirmation.
         for voxel in voxelCoordinates:
             x = int(voxel[0][0][0])
             y = int(voxel[0][0][1])
-            #b, g, r = color[i][(x, y)]
 
             img = cv.circle(frame, (int(voxel[0][0][0]), int(voxel[0][0][1])), 1, (255, 0, 0), 2)
         cv.imshow('img', img)
