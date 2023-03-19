@@ -325,12 +325,24 @@ def projectVoxels(persons):
     colorModel = {}
     for person in persons:
         color = []
+
+        maxHeight = max(persons[person][1])
+        minHeight = min(persons[person][1])
+        for voxel in persons[person]:
+            if maxHeight < voxel[1]:
+                maxHeight = voxel[1]
+            if minHeight > voxel[1]:
+                minHeight = voxel[1]
+
+        heightSize = maxHeight - minHeight
+        heightRange = (minHeight + (heightSize / 2), maxHeight - (heightSize * 0.1))
+
         for voxel in persons[person]:
             x = voxel[0]
             y = voxel[1]
             z = voxel[2]
 
-            if 15 > y > 8:
+            if heightRange[0] < y < heightRange[1]:
                 voxelPoint = (x * scalar,
                               z * scalar,
                               -y * scalar)
@@ -343,10 +355,10 @@ def projectVoxels(persons):
                     color.append((h, s, v))
                 else:
                     break
-        #         img = cv.circle(frame, (int(personCoordinate[0][0][0]), int(personCoordinate[0][0][1])), 1,
-        #                         (int(h), int(s), int(v)), 2)
-        # cv.imshow('img', img)
-        # cv.waitKey(5000)
+                img = cv.circle(frame, (int(personCoordinate[0][0][0]), int(personCoordinate[0][0][1])), 1,
+                                (int(h), int(s), int(v)), 2)
+        cv.imshow('img', img)
+        cv.waitKey(5000)
 
         colorModel[person] = color
     return colorModel
