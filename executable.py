@@ -134,6 +134,10 @@ def main():
         if config['debug_mode']:
             print(glGetError())
 
+
+        positions, colors = set_voxel_positions(config['world_width'], config['world_height'], config['world_width'])
+        cube.set_multiple_positions(positions, colors)
+
         current_time = glfw.get_time()
         delta_time = current_time - last_time
         last_time = current_time
@@ -186,10 +190,8 @@ def key_callback(window, key, scancode, action, mods):
     if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
         glfw.set_window_should_close(window, glfw.TRUE)
     if key == glfw.KEY_G and action == glfw.PRESS:
-        global cube
-        #while not glfw.window_should_close(window):
-        positions, colors = set_voxel_positions(config['world_width'], config['world_height'], config['world_width'])
-        cube.set_multiple_positions(positions, colors)
+        print("code moved")
+
 
 
 

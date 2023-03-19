@@ -169,12 +169,6 @@ def XORFrameVoxelPositions(currImgs, prevImgs, width, height, depth):
                         vCoord = (values[0], values[1], values[3])
                         if vCoord in VoxelCountList:
                             VoxelCountList[vCoord] -= 1
-                        #    voxelsOnCam[i].remove(vCoord)
-                        #    break
-                        #else:
-                        #    continue
-
-        #print("Now Off Pixels Loop took", time.time() - OffPixels_StartTime, "to run")
 
     data, colors = finaliseVoxels(width, height, depth)
     print("My new method took", time.time() - start_time, "to run")
