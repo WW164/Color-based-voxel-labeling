@@ -15,7 +15,7 @@ cube, hdrbuffer, blurbuffer, lastPosX, lastPosY = None, None, None, None, None
 firstTime = True
 window_width, window_height = config['window_width'], config['window_height']
 camera = Camera(glm.vec3(0, 100, 0), pitch=-90, yaw=0, speed=40)
-
+start = False
 
 def draw_objs(obj, program, perspective, light_pos, texture, normal, specular, depth):
     program.use()
@@ -131,7 +131,9 @@ def main():
     while not glfw.window_should_close(window):
         if config['debug_mode']:
             print(glGetError())
-
+        if(start):
+            positions, colors = set_voxel_positions(config['world_width'], config['world_height'], config['world_width'])
+            cube.set_multiple_positions(positions, colors)
         current_time = glfw.get_time()
         delta_time = current_time - last_time
         last_time = current_time
@@ -184,10 +186,9 @@ def key_callback(window, key, scancode, action, mods):
     if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
         glfw.set_window_should_close(window, glfw.TRUE)
     if key == glfw.KEY_G and action == glfw.PRESS:
-        global cube
-        while not glfw.window_should_close(window):
-            positions, colors = set_voxel_positions(config['world_width'], config['world_height'], config['world_width'])
-            cube.set_multiple_positions(positions, colors)
+        global cube, start
+        start = True
+
 
 
 def mouse_move(win, pos_x, pos_y):

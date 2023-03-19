@@ -34,7 +34,7 @@ def loadPickle(type):
             lookupTable = pickle.load(handle)
 
     elif type == 'colorModel':
-        with open('colorModel.pickle', 'rb') as handle:
+        with open('colorModelJoel.pickle', 'rb') as handle:
             lookupTable = pickle.load(handle)
     else:
         with open('xor.pickle', 'rb') as handle:
@@ -201,7 +201,7 @@ def createColorModel(colorModel, persons, centers):
     for person in colorModel:
 
         hsvColor = np.array(colorModel[person], dtype=np.float32)
-        hsvColor = np.reshape(hsvColor, (20, 20, 3))
+        hsvColor = np.reshape(hsvColor, (10, 10, 3))
 
         histSize = 256
         histRange = (0, 256)
@@ -215,12 +215,8 @@ def createColorModel(colorModel, persons, centers):
         for p in colorModel:
             originalHist = hist[p]
             comparison = cv.compareHist(h_hist, originalHist, cv.HISTCMP_CORREL)
-            print("Person: ", person, "this frame and person ", p, " last frame have a similarity value of:",
-                  comparison)
-            comparisons.append(comparison)
 
-        print("Max similarity for person ", person, "is: ", comparisons[comparisons.index(max(comparisons))],
-              "and with person: ", comparisons.index(max(comparisons)))
+            comparisons.append(comparison)
 
         adjustedPerson[comparisons.index(max(comparisons))] = persons[person]
         adjustedCenters[comparisons.index(max(comparisons))] = centers[person]
@@ -255,30 +251,19 @@ def trajectoryImage():
                         averageColor[centerLocations.index(center) % 4], -1)
 
     cv.imwrite('trajectory.png', img)
-    # cv.imshow("Trajectory", img)
-    # cv.waitKey(500)
-
 
 def set_voxel_positions(width, height, depth):
     global frameIndex, previousForegroundImages, averageColor, centerLocations
+    print("Running frame ", frameIndex)
     foregroundImages = GenerateForeground()
 
-    # if frameIndex == 1:
     data, colors = FirstFrameVoxelPositions(foregroundImages, width, height, depth)
 
-    # else:
-    #    data, colors = (XORFrameVoxelPositions(foregroundImages, previousForegroundImages, width, height, depth))
     previousForegroundImages = foregroundImages
 
     centers, persons = cluster(data)
-    print("number of clusters: ", len(persons))
-
     data.clear()
     colors.clear()
-
-    # for center in centerLocations:
-    #     data.append(center)
-    #     colors.append((1, 0, 0))
 
     colorModel = projectVoxels(persons)
     persons, centers = createColorModel(colorModel, persons, centers)
@@ -297,10 +282,6 @@ def set_voxel_positions(width, height, depth):
         for voxel in persons[person]:
             data.append(voxel)
             colors.append((averageColor[person][0] / 256, averageColor[person][1] / 256, averageColor[person][2] / 256))
-
-    # for center in centerLocations:
-    #     data.append(center)
-    #     colors.append()
 
     cv.destroyAllWindows()
     frameIndex += 5
@@ -333,7 +314,7 @@ def projectVoxels(persons):
                 minHeight = voxel[1]
 
         heightSize = maxHeight - minHeight
-        heightRange = (minHeight + (heightSize / 2), maxHeight - (heightSize * 0.1))
+        heightRange = (minHeight + (heightSize * 0.4), maxHeight - (heightSize * 0.1))
 
         for voxel in persons[person]:
             x = voxel[0]
@@ -349,14 +330,10 @@ def projectVoxels(persons):
                 fy = int(personCoordinate[0][0][0])
                 hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
                 (h, s, v) = hsv[fx, fy]
-                if len(color) < 400:
+                if len(color) < 100:
                     color.append((h, s, v))
                 else:
                     break
-                img = cv.circle(frame, (int(personCoordinate[0][0][0]), int(personCoordinate[0][0][1])), 1,
-                                (int(h), int(s), int(v)), 2)
-        cv.imshow('img', img)
-        cv.waitKey(500)
 
         colorModel[person] = color
     return colorModel
