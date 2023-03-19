@@ -34,7 +34,7 @@ def loadPickle(type):
             lookupTable = pickle.load(handle)
 
     elif type == 'colorModel':
-        with open('colorModel.pickle', 'rb') as handle:
+        with open('colorModelJoel.pickle', 'rb') as handle:
             lookupTable = pickle.load(handle)
     else:
         with open('xor.pickle', 'rb') as handle:
@@ -195,6 +195,7 @@ def cluster(voxels):
 def createColorModel(colorModel, persons, centers):
     global previousFramesHists
     hist = loadPickle("colorModel")
+    #hist = {}
     adjustedPerson = {}
     adjustedCenters = {}
 
@@ -209,9 +210,9 @@ def createColorModel(colorModel, persons, centers):
 
         h_hist = cv.calcHist(hsvColor, [0], None, [histSize], histRange, accumulate=accumulate)
         cv.normalize(h_hist, h_hist, alpha=0, beta=1, norm_type=cv.NORM_MINMAX)
+        hist[person] = h_hist
 
         comparisons = []
-
         for p in colorModel:
             originalHist = hist[p]
             comparison = cv.compareHist(h_hist, originalHist, cv.HISTCMP_CORREL)
@@ -224,6 +225,8 @@ def createColorModel(colorModel, persons, centers):
 
         adjustedPerson[comparisons.index(max(comparisons))] = persons[person]
         adjustedCenters[comparisons.index(max(comparisons))] = centers[person]
+    # with open('colorModelJoel.pickle', 'wb') as handle:
+    #     pickle.dump(hist, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     return adjustedPerson, adjustedCenters
 
@@ -305,7 +308,7 @@ def set_voxel_positions(width, height, depth):
     #     colors.append()
 
     cv.destroyAllWindows()
-    frameIndex += 5
+    frameIndex += 50
     return data, colors
 
 
@@ -335,7 +338,7 @@ def projectVoxels(persons):
                 minHeight = voxel[1]
 
         heightSize = maxHeight - minHeight
-        heightRange = (minHeight + (heightSize / 2), maxHeight - (heightSize * 0.1))
+        heightRange = (minHeight + (heightSize * 0.4), maxHeight - (heightSize * 0.1))
 
         for voxel in persons[person]:
             x = voxel[0]
