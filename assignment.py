@@ -14,7 +14,7 @@ block_size = 1
 frameCellWidth = 1000
 frameCellHeight = 1000
 tileSize = 115
-frameIndex = 1
+frameIndex = 150
 pixels = []
 voxels = []
 previousForegroundImages = []
@@ -34,7 +34,7 @@ def loadPickle(type):
             lookupTable = pickle.load(handle)
 
     elif type == 'colorModel':
-        with open('colorModel.pickle', 'rb') as handle:
+        with open('colorModelJoel.pickle', 'rb') as handle:
             lookupTable = pickle.load(handle)
     else:
         with open('xor.pickle', 'rb') as handle:
@@ -197,11 +197,12 @@ def createColorModel(colorModel, persons, centers):
     hist = loadPickle("colorModel")
     adjustedPerson = {}
     adjustedCenters = {}
+    comparisons = {0: [], 1: [], 2: [], 3: []}
 
     for person in colorModel:
 
         hsvColor = np.array(colorModel[person], dtype=np.float32)
-        hsvColor = np.reshape(hsvColor, (20, 20, 3))
+        hsvColor = np.reshape(hsvColor, (10, 10, 3))
 
         histSize = 256
         histRange = (0, 256)
@@ -210,23 +211,49 @@ def createColorModel(colorModel, persons, centers):
         h_hist = cv.calcHist(hsvColor, [0], None, [histSize], histRange, accumulate=accumulate)
         cv.normalize(h_hist, h_hist, alpha=0, beta=1, norm_type=cv.NORM_MINMAX)
 
-        comparisons = []
-
         for p in colorModel:
             originalHist = hist[p]
             comparison = cv.compareHist(h_hist, originalHist, cv.HISTCMP_CORREL)
             print("Person: ", person, "this frame and person ", p, " last frame have a similarity value of:",
                   comparison)
-            comparisons.append(comparison)
+            comparisons[person].append(comparison)
 
-        print("Max similarity for person ", person, "is: ", comparisons[comparisons.index(max(comparisons))],
-              "and with person: ", comparisons.index(max(comparisons)))
-
-        adjustedPerson[comparisons.index(max(comparisons))] = persons[person]
-        adjustedCenters[comparisons.index(max(comparisons))] = centers[person]
+    MaxSimilarity = {}
+    result = GetBestMatches(comparisons, MaxSimilarity)
+    for person in result:
+        adjustedPerson[result[person][0]] = persons[person]
+        adjustedCenters[result[person][0]] = centers[person]
 
     return adjustedPerson, adjustedCenters
 
+def GetBestMatches(comparisons, MaxSimilarity):
+
+    for comp in comparisons:
+        MaxSimilarity[comp] = GetBestMatch(comparisons[(comp)])
+
+    for i in MaxSimilarity:
+        for j in MaxSimilarity:
+            if( i != j):
+                if MaxSimilarity[i][0] == MaxSimilarity[j][0]:
+                    #print(MaxSimilarity[i][0], " is the same as ", MaxSimilarity[j][0])
+                    if MaxSimilarity[i][1] > MaxSimilarity[j][1]:
+                        comparisons[(j)][comparisons[(j)].index(max(comparisons[(j)]))] = 0
+                        MaxSimilarity[j] = GetBestMatch(comparisons[(j)])
+                    else:
+                        comparisons[(i)][comparisons[(i)].index(max(comparisons[(i)]))] = 0
+                        MaxSimilarity[i] = GetBestMatch(comparisons[(i)])
+    unique_Keys = []
+    for i in MaxSimilarity:
+        unique_Keys.append(MaxSimilarity[i][0])
+    unique_Keys = list(set(unique_Keys))
+    if len(unique_Keys) == 4:
+        return MaxSimilarity
+    else:
+        MaxSimilarity = GetBestMatches(comparisons, MaxSimilarity)
+        return MaxSimilarity
+
+def GetBestMatch(SinglePersonsSimilarities):
+    return (SinglePersonsSimilarities.index(max(SinglePersonsSimilarities)), max(SinglePersonsSimilarities))
 
 def trajectoryImage():
     global centerLocations, scalar, averageColor
@@ -335,7 +362,7 @@ def projectVoxels(persons):
                 minHeight = voxel[1]
 
         heightSize = maxHeight - minHeight
-        heightRange = (minHeight + (heightSize / 2), maxHeight - (heightSize * 0.1))
+        heightRange = (minHeight + (heightSize * 0.5), maxHeight - (heightSize * 0.1))
 
         for voxel in persons[person]:
             x = voxel[0]
@@ -351,7 +378,7 @@ def projectVoxels(persons):
                 fy = int(personCoordinate[0][0][0])
                 hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
                 (h, s, v) = hsv[fx, fy]
-                if len(color) < 400:
+                if len(color) < 100:
                     color.append((h, s, v))
                 else:
                     break

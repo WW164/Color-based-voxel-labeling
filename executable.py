@@ -190,6 +190,7 @@ def key_callback(window, key, scancode, action, mods):
         cube.set_multiple_positions(positions, colors)
 
 
+
 def mouse_move(win, pos_x, pos_y):
     global firstTime, camera, lastPosX, lastPosY
     if firstTime:
