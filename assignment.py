@@ -14,7 +14,9 @@ block_size = 1
 frameCellWidth = 1000
 frameCellHeight = 1000
 tileSize = 115
-frameIndex = 381
+
+frameIndex = 1
+
 pixels = []
 voxels = []
 previousForegroundImages = []
@@ -198,8 +200,8 @@ def createColorModel(colorModel, persons, centers):
     adjustedPerson = {}
     adjustedCenters = {}
     comparisons = {0: [], 1: [], 2: [], 3: []}
-
     for person in colorModel:
+
 
         hsvColor = np.array(colorModel[person], dtype=np.float32)
         hsvColor = np.reshape(hsvColor, (10, 10, 3))
@@ -219,12 +221,13 @@ def createColorModel(colorModel, persons, centers):
     MaxSimilarity = {}
     result = GetBestMatches(comparisons, MaxSimilarity)
     for person in result:
-        adjustedPerson[result[person][0]] = persons[person]
-        adjustedCenters[result[person][0]] = centers[person]
+        adjustedPerson[person] = persons[result[person][0]]
+        adjustedCenters[person] = centers[result[person][0]]
 
     return adjustedPerson, adjustedCenters
 
 def GetBestMatches(comparisons, MaxSimilarity):
+
     for comp in comparisons:
         MaxSimilarity[comp] = GetBestMatch(comparisons[(comp)])
 
@@ -246,8 +249,7 @@ def GetBestMatches(comparisons, MaxSimilarity):
     if len(unique_Keys) == 4:
         return MaxSimilarity
     else:
-        MaxSimilarity = GetBestMatches(comparisons, MaxSimilarity)
-        return MaxSimilarity
+        return GetBestMatches(comparisons, MaxSimilarity)
 
 def GetBestMatch(SinglePersonsSimilarities):
     return (SinglePersonsSimilarities.index(max(SinglePersonsSimilarities)), max(SinglePersonsSimilarities))
@@ -293,29 +295,27 @@ def set_voxel_positions(width, height, depth):
     previousForegroundImages = foregroundImages
 
     centers, persons = cluster(data)
-
-
     data.clear()
     colors.clear()
 
-    colorModel = projectVoxels(persons)
+    colorModel, success = projectVoxels(persons)
+    if not success:
+        print("failed")
+        frameIndex += 5
+        return data, colors
+
     persons, centers = createColorModel(colorModel, persons, centers)
 
-    myKeys = list(centers.keys())
-    myKeys.sort()
-    centers = {i: centers[i] for i in myKeys}
-
     for center in centers:
-        center = [centers[center][0]] + [0] + [centers[center][1]]
+        center = [centers[center][0]] + [10] + [centers[center][1]]
         centerLocations.append(center)
 
     trajectoryImage()
 
     for person in persons:
-        for voxel in persons[person]:
-            data.append(voxel)
+        for i in range(len(persons[person])):
+            data.append(persons[person][i])
             colors.append((averageColor[person][0] / 256, averageColor[person][1] / 256, averageColor[person][2] / 256))
-
 
     cv.destroyAllWindows()
     frameIndex += 5
@@ -324,6 +324,7 @@ def set_voxel_positions(width, height, depth):
 
 def projectVoxels(persons):
     global scalar
+    success = True
     intrinsicMatrix, dist = calibrate.loadIntrinsics()
     fileName = "camera_extrinsics2.npz"
     with np.load(fileName) as file:
@@ -369,10 +370,11 @@ def projectVoxels(persons):
                 else:
                     break
         colorModel[person] = color
-    for p in colorModel:
-        if (len(colorModel[p]) < 100):
-            colorModel[p] = {}
-    return colorModel
+    for person in colorModel:
+        if (len(colorModel[person]) < 100):
+            success = False
+
+    return colorModel, success
 
 
 def get_cam_positions():

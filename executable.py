@@ -131,6 +131,7 @@ def main():
     while not glfw.window_should_close(window):
         if config['debug_mode']:
             print(glGetError())
+
         if start:
             positions, colors = set_voxel_positions(config['world_width'], config['world_height'], config['world_width'])
             cube.set_multiple_positions(positions, colors)
