@@ -27,7 +27,7 @@ averageColor = [[0, 255, 255],
                 [255, 0, 255],
                 [0, 255, 0]]
 
-
+# load data from pickle files
 def loadPickle(type):
     if type == 'voxels':
         with open('lookupTable.pickle', 'rb') as handle:
@@ -42,7 +42,7 @@ def loadPickle(type):
 
     return lookupTable
 
-
+# load extrinsic data
 def getData():
     rvecs = []
     tvecs = []
@@ -171,7 +171,7 @@ def XORFrameVoxelPositions(currImgs, prevImgs, width, height, depth):
     print("My new method took", time.time() - start_time, "to run")
     return data, colors
 
-
+# cluster voxels by dropping height
 def cluster(voxels):
     criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 10, 1.0)
     clusteredVoxels = []
@@ -191,7 +191,7 @@ def cluster(voxels):
 
     return centers, persons
 
-
+# compare histograms of the current frame to the offline result and re-assign label to the clusters and their centers
 def createColorModel(colorModel, persons, centers):
     global previousFramesHists
     hist = loadPickle("colorModel")
@@ -223,7 +223,7 @@ def createColorModel(colorModel, persons, centers):
 
     return adjustedPerson, adjustedCenters
 
-
+# creates trajectory image by projecting the center points onto a black image
 def trajectoryImage():
     global centerLocations, scalar, averageColor
 
@@ -287,7 +287,7 @@ def set_voxel_positions(width, height, depth):
     frameIndex += 5
     return data, colors
 
-
+# projects each cluster to camera 2 and extracts the HSV value and stores it into a dictionary
 def projectVoxels(persons):
     global scalar
     intrinsicMatrix, dist = calibrate.loadIntrinsics()
@@ -312,7 +312,7 @@ def projectVoxels(persons):
                 maxHeight = voxel[1]
             if minHeight > voxel[1]:
                 minHeight = voxel[1]
-
+        # limiting the height to take sample from shirts by getting the height size of each cluster
         heightSize = maxHeight - minHeight
         heightRange = (minHeight + (heightSize * 0.4), maxHeight - (heightSize * 0.1))
 

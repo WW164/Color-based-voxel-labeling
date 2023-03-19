@@ -127,7 +127,7 @@ def draw(image, corners, imgPts):
     cv.imshow("img", img)
     cv.waitKey(0)
 
-
+# Calibrates extrinsics
 def calibrateExtrinsic():
     axis = np.float32([[3, 0, 0], [0, 3, 0], [0, 0, -3]]).reshape(-1, 3) * tileSize
     mtx, dist = loadIntrinsics()
@@ -164,6 +164,7 @@ def saveFrame():
             # cv.imwrite(("frame" + str(i+1) + ".png"), frame)
             print("Done")
 
+# Creates look up table based on the voxel space
 def createLookupTable():
     cameraLookupTable = {}
     intrinsicMatrix, dist = loadIntrinsics()
