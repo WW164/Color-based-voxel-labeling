@@ -14,7 +14,7 @@ block_size = 1
 frameCellWidth = 1000
 frameCellHeight = 1000
 tileSize = 115
-frameIndex = 150
+frameIndex = 381
 pixels = []
 voxels = []
 previousForegroundImages = []
@@ -214,8 +214,6 @@ def createColorModel(colorModel, persons, centers):
         for p in colorModel:
             originalHist = hist[p]
             comparison = cv.compareHist(h_hist, originalHist, cv.HISTCMP_CORREL)
-            print("Person: ", person, "this frame and person ", p, " last frame have a similarity value of:",
-                  comparison)
             comparisons[person].append(comparison)
 
     MaxSimilarity = {}
@@ -227,7 +225,6 @@ def createColorModel(colorModel, persons, centers):
     return adjustedPerson, adjustedCenters
 
 def GetBestMatches(comparisons, MaxSimilarity):
-
     for comp in comparisons:
         MaxSimilarity[comp] = GetBestMatch(comparisons[(comp)])
 
@@ -237,10 +234,10 @@ def GetBestMatches(comparisons, MaxSimilarity):
                 if MaxSimilarity[i][0] == MaxSimilarity[j][0]:
                     #print(MaxSimilarity[i][0], " is the same as ", MaxSimilarity[j][0])
                     if MaxSimilarity[i][1] > MaxSimilarity[j][1]:
-                        comparisons[(j)][comparisons[(j)].index(max(comparisons[(j)]))] = 0
+                        comparisons[(j)][comparisons[(j)].index(max(comparisons[(j)]))] = -1
                         MaxSimilarity[j] = GetBestMatch(comparisons[(j)])
                     else:
-                        comparisons[(i)][comparisons[(i)].index(max(comparisons[(i)]))] = 0
+                        comparisons[(i)][comparisons[(i)].index(max(comparisons[(i)]))] = -1
                         MaxSimilarity[i] = GetBestMatch(comparisons[(i)])
     unique_Keys = []
     for i in MaxSimilarity:
@@ -282,13 +279,11 @@ def trajectoryImage():
                         averageColor[centerLocations.index(center) % 4], -1)
 
     cv.imwrite('trajectory.png', img)
-    # cv.imshow("Trajectory", img)
-    # cv.waitKey(500)
-
 
 def set_voxel_positions(width, height, depth):
     global frameIndex, previousForegroundImages, averageColor, centerLocations
     foregroundImages = GenerateForeground()
+    print("Running Frame: ", frameIndex)
 
     # if frameIndex == 1:
     data, colors = FirstFrameVoxelPositions(foregroundImages, width, height, depth)
@@ -298,14 +293,10 @@ def set_voxel_positions(width, height, depth):
     previousForegroundImages = foregroundImages
 
     centers, persons = cluster(data)
-    print("number of clusters: ", len(persons))
+
 
     data.clear()
     colors.clear()
-
-    # for center in centerLocations:
-    #     data.append(center)
-    #     colors.append((1, 0, 0))
 
     colorModel = projectVoxels(persons)
     persons, centers = createColorModel(colorModel, persons, centers)
@@ -318,8 +309,6 @@ def set_voxel_positions(width, height, depth):
         center = [centers[center][0]] + [0] + [centers[center][1]]
         centerLocations.append(center)
 
-    # print("center location is: ", centerLocations)
-
     trajectoryImage()
 
     for person in persons:
@@ -327,9 +316,6 @@ def set_voxel_positions(width, height, depth):
             data.append(voxel)
             colors.append((averageColor[person][0] / 256, averageColor[person][1] / 256, averageColor[person][2] / 256))
 
-    # for center in centerLocations:
-    #     data.append(center)
-    #     colors.append()
 
     cv.destroyAllWindows()
     frameIndex += 5
@@ -382,12 +368,10 @@ def projectVoxels(persons):
                     color.append((h, s, v))
                 else:
                     break
-                img = cv.circle(frame, (int(personCoordinate[0][0][0]), int(personCoordinate[0][0][1])), 1,
-                                (int(h), int(s), int(v)), 2)
-        cv.imshow('img', img)
-        cv.waitKey(5000)
-
         colorModel[person] = color
+    for p in colorModel:
+        if (len(colorModel[p]) < 100):
+            colorModel[p] = {}
     return colorModel
 
 
